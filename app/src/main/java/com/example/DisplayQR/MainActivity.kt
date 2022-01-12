@@ -14,7 +14,6 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.palette.graphics.Palette
-import com.example.DisplayQR.databinding.ActivityMainBinding
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.SimpleDateFormat
@@ -29,15 +28,25 @@ import android.graphics.YuvImage
 
 import android.graphics.Bitmap
 import android.media.Image.Plane
+import android.widget.Button
+import android.widget.TextView
+import com.example.DisplayQR.databinding.ActivityMainBinding
 import java.nio.ByteBuffer
+import java.util.TimerTask
+
+import java.util.Timer
+
+
+
 
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var imageCapture: ImageCapture? = null
     private lateinit var outputDirectory: File
-
     private lateinit var cameraExecutor: ExecutorService
+//    private lateinit var btnTakePhoto: Button
+    private lateinit var tvMessage: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +55,7 @@ class MainActivity : AppCompatActivity() {
 
         outputDirectory = getOutputDirectory()
         cameraExecutor = Executors.newSingleThreadExecutor()
+        tvMessage = findViewById(R.id.tvMessage)
 
         if (allPermissionsGranted()) {
             startCamera()
@@ -53,9 +63,16 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, Constants.REQUIRED_PERMISSIONS, Constants.REQUEST_CODE_PERMISSIONS)
         }
 
-        binding.btnTakePhoto.setOnClickListener {
-            takePhoto()
-        }
+//        btnTakePhoto = findViewById(R.id.btnTakePhoto)
+//        btnTakePhoto.setOnClickListener {
+//            takePhoto()
+//        }
+
+        Timer().scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                takePhoto()
+            }
+        }, 0, 3000)
     }
 
     override fun onRequestPermissionsResult(
@@ -115,7 +132,6 @@ class MainActivity : AppCompatActivity() {
             ImageCapture.OnImageCapturedCallback() {
                 @SuppressLint("UnsafeOptInUsageError")
                 override fun onCaptureSuccess(image: ImageProxy) {
-//                    Toast.makeText(this@MainActivity, "WOWOWOW", Toast.LENGTH_LONG).show()
                     val myBitmap = decodeBitmap(image)
                     val palette = Palette.from(myBitmap!!).generate()
 
@@ -127,13 +143,15 @@ class MainActivity : AppCompatActivity() {
                     val green = hexString.substring(5, 7).toLong(16)
                     val blue = hexString.substring(7).toLong(16)
 
-                    val message = if (green > blue && green > red) "valid" else "invalid"
+                    val message = if (green > red && green > 80) "Valid" else "Invalid"
 
-                    Toast.makeText(this@MainActivity, "$red $green $blue $message $hexString", Toast.LENGTH_LONG).show()
+//                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                    tvMessage.text = message
                     image.close()
                 }
 
                 override fun onError(exception: ImageCaptureException) {
+                    tvMessage.text = "Error has occurred ${exception.message}"
                     Log.e(Constants.TAG, "onError: ${exception.message}", exception)
                 }
         })
