@@ -137,16 +137,22 @@ class MainActivity : AppCompatActivity() {
 
                     val default = 0x000000
                     val vibrant = palette.getVibrantColor(default).toLong()
-                    val hexString = java.lang.String.format("#%08X", (0xFFFFFFFF and vibrant))
+                    val vibrantHexString = java.lang.String.format("#%08X", (0xFFFFFFFF and vibrant))
 
-                    val red = hexString.substring(3, 5).toLong(16)
-                    val green = hexString.substring(5, 7).toLong(16)
-                    val blue = hexString.substring(7).toLong(16)
+                    val vibrantLight = palette.getLightVibrantColor(default).toLong()
+                    val vibrantLightHexString = java.lang.String.format("#%08X", (0xFFFFFFFF and vibrantLight))
 
-                    val message = if (green > red && green > 80) "Valid" else "Invalid"
+                    val vibrantDark = palette.getDarkVibrantColor(default).toLong()
+                    val vibrantDarkHexString = java.lang.String.format("#%08X", (0xFFFFFFFF and vibrantDark))
+
+                    val red = vibrantDarkHexString.substring(3, 5).toLong(16)
+                    val green = vibrantDarkHexString.substring(5, 7).toLong(16)
+                    val blue = vibrantDarkHexString.substring(7).toLong(16)
+
+                    val message = if (green > red && green > 105) "Valid" else "Invalid"
 
 //                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
-                    tvMessage.text = message
+                    tvMessage.text = "$red $green $blue $message"
                     image.close()
                 }
 
