@@ -1,5 +1,6 @@
 package com.example.DisplayQR
 
+import android.R.attr
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.*
@@ -21,6 +22,7 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import android.graphics.BitmapFactory
+import android.util.Base64
 
 import android.graphics.ImageFormat
 
@@ -28,13 +30,36 @@ import android.graphics.YuvImage
 
 import android.graphics.Bitmap
 import android.media.Image.Plane
+import android.util.Base64.DEFAULT
+import android.util.Base64.encodeToString
 import android.widget.Button
 import android.widget.TextView
+import com.android.volley.Request
+import com.android.volley.Response
+import com.android.volley.toolbox.JsonObjectRequest
+import com.android.volley.toolbox.StringRequest
+import com.android.volley.toolbox.Volley
 import com.example.DisplayQR.databinding.ActivityMainBinding
 import java.nio.ByteBuffer
 import java.util.TimerTask
 
 import java.util.Timer
+import kotlin.collections.HashMap
+import org.json.JSONObject
+
+import com.android.volley.AuthFailureError
+
+import com.android.volley.VolleyError
+import android.R.attr.password
+import com.android.volley.RetryPolicy
+
+import android.R.string.no
+
+
+
+
+
+
 
 
 
@@ -72,7 +97,7 @@ class MainActivity : AppCompatActivity() {
             override fun run() {
                 takePhoto()
             }
-        }, 0, 3000)
+        }, 0, 5000)
     }
 
     override fun onRequestPermissionsResult(
@@ -133,26 +158,45 @@ class MainActivity : AppCompatActivity() {
                 @SuppressLint("UnsafeOptInUsageError")
                 override fun onCaptureSuccess(image: ImageProxy) {
                     val myBitmap = decodeBitmap(image)
-                    val palette = Palette.from(myBitmap!!).generate()
+                    val imageData = myBitmap?.let { encodeToByteArray(it) }
 
-                    val default = 0x000000
-                    val vibrant = palette.getVibrantColor(default).toLong()
-                    val vibrantHexString = java.lang.String.format("#%08X", (0xFFFFFFFF and vibrant))
+                    val queue = Volley.newRequestQueue(this@MainActivity)
+                    val url = "https://tohhongxiang.pythonanywhere.com/predict/NTU - N3 AND N4 CLUSTER".replace(" ", "%20")
 
-                    val vibrantLight = palette.getLightVibrantColor(default).toLong()
-                    val vibrantLightHexString = java.lang.String.format("#%08X", (0xFFFFFFFF and vibrantLight))
+                    val request = object : VolleyFileUploadRequest(
+                        Method.POST,
+                        url,
+                        Response.Listener {
+                            Toast.makeText(this@MainActivity, "Success $it", Toast.LENGTH_LONG).show()
+                        },
+                        Response.ErrorListener {
+                            Toast.makeText(this@MainActivity, "Error $it", Toast.LENGTH_LONG).show()
+                        }
+                    ) {
+                        override fun getByteData(): MutableMap<String, FileDataPart> {
+                            var params = HashMap<String, FileDataPart>()
+                            params["image"] = FileDataPart("image", imageData!!, "jpeg")
+                            return params
+                        }
+                    }
 
-                    val vibrantDark = palette.getDarkVibrantColor(default).toLong()
-                    val vibrantDarkHexString = java.lang.String.format("#%08X", (0xFFFFFFFF and vibrantDark))
+                    request.retryPolicy = object : RetryPolicy {
+                        override fun getCurrentTimeout(): Int {
+                            return 50000
+                        }
 
-                    val red = vibrantDarkHexString.substring(3, 5).toLong(16)
-                    val green = vibrantDarkHexString.substring(5, 7).toLong(16)
-                    val blue = vibrantDarkHexString.substring(7).toLong(16)
+                        override fun getCurrentRetryCount(): Int {
+                            return 50000
+                        }
 
-                    val message = if (green > red && green > 105) "Valid" else "Invalid"
+                        @Throws(VolleyError::class)
+                        override fun retry(error: VolleyError) {
+                        }
+                    }
 
-//                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
-                    tvMessage.text = "$red $green $blue $message"
+                    // Add the request to the RequestQueue.
+                    queue.add(request)
+
                     image.close()
                 }
 
@@ -172,5 +216,12 @@ class MainActivity : AppCompatActivity() {
         val buffer = image.planes[0].buffer
         val bytes = ByteArray(buffer.capacity()).also { buffer.get(it) }
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }
+
+    private fun encodeToByteArray(image: Bitmap): ByteArray? {
+        val baos = ByteArrayOutputStream()
+        image.compress(Bitmap.CompressFormat.PNG, 100, baos)
+        val b = baos.toByteArray()
+        return b
     }
 }
